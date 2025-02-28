@@ -1,12 +1,28 @@
-import axios from "axios";
 <template>
   <div class="container mt-5">
     <h2 class="fw-bold">รายชื่อทั้งหมด</h2>
 
-    <!-- ✅ ช่องค้นหา -->
+    <!-- ✅ ส่วนของตัวกรองและเรียงลำดับ -->
     <div class="d-flex justify-content-between my-3">
-      <input v-model="searchQuery" type="text" class="form-control w-25" placeholder="ค้นหา...">
-      <button class="btn btn-primary" @click="showAddUserModal = true">
+      <input v-model="searchQuery" type="text" class="form-control w-25" placeholder="🔍 ค้นหา...">
+      
+      <!-- ✅ กรองตามเพศ -->
+      <select v-model="selectedGender" class="form-control w-25">
+        <option value="">-- กรองเพศ --</option>
+        <option value="ชาย">ชาย</option>
+        <option value="หญิง">หญิง</option>
+        <option value="อื่น ๆ">อื่น ๆ</option>
+      </select>
+
+      <!-- ✅ เรียงลำดับ -->
+      <select v-model="sortKey" class="form-control w-25">
+        <option value="">-- เรียงลำดับ --</option>
+        <option value="firstname">ชื่อ (A-Z)</option>
+        <option value="lastname">นามสกุล (A-Z)</option>
+        <option value="age">อายุ (น้อย → มาก)</option>
+      </select>
+      
+      <button class="btn btn-primary" @click="openAddUserModal">
         ➕ เพิ่มผู้ใช้
       </button>
     </div>
@@ -26,7 +42,7 @@ import axios from "axios";
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(user, index) in filteredUsers" :key="user.id">
+          <tr v-for="(user, index) in sortedAndFilteredUsers" :key="user.id">
             <td>{{ user.firstname }}</td>
             <td>{{ user.lastname }}</td>
             <td>{{ user.age }}</td>
@@ -82,19 +98,43 @@ export default {
     return {
       users: [],
       searchQuery: "",
+      selectedGender: "",
+      sortKey: "",
+      sortDirection: "asc",
       showAddUserModal: false,
       editingUser: null,
       newUser: { firstname: "", lastname: "", age: "", gender: "หญิง", interests: "", description: "" },
     };
   },
   computed: {
-    filteredUsers() {
-      return this.users.filter(user => 
-        user.firstname.includes(this.searchQuery) || 
-        user.lastname.includes(this.searchQuery) ||
-        user.age.toString().includes(this.searchQuery) ||
-        user.gender.includes(this.searchQuery)
-      );
+    sortedAndFilteredUsers() {
+      let filtered = this.users;
+
+      // ✅ กรองตามเพศ
+      if (this.selectedGender) {
+        filtered = filtered.filter(user => user.gender === this.selectedGender);
+      }
+
+      // ✅ ค้นหาจากชื่อ / นามสกุล / อายุ
+      if (this.searchQuery) {
+        filtered = filtered.filter(user =>
+          user.firstname.includes(this.searchQuery) ||
+          user.lastname.includes(this.searchQuery) ||
+          user.age.toString().includes(this.searchQuery)
+        );
+      }
+
+      // ✅ เรียงลำดับ
+      if (this.sortKey) {
+        filtered = [...filtered].sort((a, b) => {
+          let result = 0;
+          if (a[this.sortKey] < b[this.sortKey]) result = -1;
+          if (a[this.sortKey] > b[this.sortKey]) result = 1;
+          return this.sortDirection === "asc" ? result : -result;
+        });
+      }
+
+      return filtered;
     }
   },
   mounted() {
@@ -109,11 +149,12 @@ export default {
         console.error("Error fetching users:", error);
       }
     },
+    openAddUserModal() {
+      this.newUser = { firstname: "", lastname: "", age: "", gender: "หญิง", interests: "", description: "" };
+      this.editingUser = null;
+      this.showAddUserModal = true;
+    },
     async addUser() {
-      if (!this.newUser.firstname || !this.newUser.lastname || !this.newUser.age) {
-        alert("กรุณากรอกข้อมูลให้ครบ");
-        return;
-      }
       try {
         await axios.post("http://localhost:8000/users", this.newUser);
         this.fetchUsers();
@@ -154,15 +195,3 @@ export default {
   }
 };
 </script>
-
-<style>
-.modal {
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.modal-dialog {
-  max-width: 500px;
-}
-</style>

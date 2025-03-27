@@ -1,2 +1,609 @@
 npx nodemon .\index.js
 npm run dev
+
+<template>
+  <div :class="['app-container', darkMode ? 'dark-mode' : 'light-mode']">
+    <!-- ✅ ปุ่มสลับโหมด -->
+    <div class="header">
+      <h1>📃 รายชื่อผู้ใช้</h1>
+      <button class="toggle-btn" @click="toggleDarkMode">
+        {{ darkMode ? "🌞 Light Mode" : "🌙 Dark Mode" }}
+      </button>
+    </div>
+
+    <!-- ✅ ส่วนกรองและเรียงลำดับ -->
+    <div class="filter-container">
+      <input v-model="searchQuery" type="text" placeholder="🔍 ค้นหา..." class="input-field">
+      <select v-model="selectedGender" class="dropdown">
+        <option value="">กรองเพศ</option>
+        <option value="ชาย">ชาย</option>
+        <option value="หญิง">หญิง</option>
+        <option value="อื่น ๆ">อื่น ๆ</option>
+      </select>
+      <select v-model="sortKey" class="dropdown">
+        <option value="">เรียงลำดับ</option>
+        <option value="firstname">ชื่อ (A-Z)</option>
+        <option value="lastname">นามสกุล (A-Z)</option>
+        <option value="age">อายุ (น้อย → มาก)</option>
+      </select>
+      <button class="add-btn" @click="showAddUserModal = true">➕ เพิ่มผู้ใช้</button>
+    </div>
+
+    <!-- ✅ ตารางแสดงข้อมูล -->
+    <div class="user-list">
+      <div v-for="user in sortedAndFilteredUsers" :key="user.id" class="user-card">
+        <div class="user-info">
+          <h3>{{ user.firstname }} {{ user.lastname }}</h3>
+          <p>อายุ: {{ user.age }} | เพศ: {{ user.gender }}</p>
+          <p class="interests">💡 {{ user.interests }}</p>
+          <p class="desc">{{ user.description }}</p>
+        </div>
+        <div class="actions">
+          <button class="edit-btn" @click="editUser(user)">📝 แก้ไข</button>
+          <button class="delete-btn" @click="deleteUser(user.id)">🗑 ลบ</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+import axios from "axios";
+
+export default {
+  data() {
+    return {
+      users: [],
+      searchQuery: "",
+      selectedGender: "",
+      sortKey: "",
+      sortDirection: "asc",
+      darkMode: false
+    };
+  },
+  computed: {
+    sortedAndFilteredUsers() {
+      let filtered = this.users;
+
+      // ✅ กรองตามเพศ
+      if (this.selectedGender) {
+        filtered = filtered.filter(user => user.gender === this.selectedGender);
+      }
+
+      // ✅ ค้นหาจากชื่อ / นามสกุล / อายุ
+      if (this.searchQuery) {
+        filtered = filtered.filter(user =>
+          user.firstname.includes(this.searchQuery) ||
+          user.lastname.includes(this.searchQuery) ||
+          user.age.toString().includes(this.searchQuery)
+        );
+      }
+
+      // ✅ เรียงลำดับ
+      if (this.sortKey) {
+        filtered = [...filtered].sort((a, b) => {
+          let result = 0;
+          if (a[this.sortKey] < b[this.sortKey]) result = -1;
+          if (a[this.sortKey] > b[this.sortKey]) result = 1;
+          return this.sortDirection === "asc" ? result : -result;
+        });
+      }
+
+      return filtered;
+    }
+  },
+  mounted() {
+    this.fetchUsers();
+  },
+  methods: {
+    async fetchUsers() {
+      try {
+        const response = await axios.get("http://localhost:8000/users");
+        this.users = response.data;
+      } catch (error) {
+        console.error("Error fetching users:", error);
+      }
+    },
+    toggleDarkMode() {
+      this.darkMode = !this.darkMode;
+    }
+  }
+};
+</script>
+
+<style>
+/* ✅ โหมดสีขาวดำ */
+.light-mode {
+  background-color: #f5f5f5;
+  color: #333;
+}
+.dark-mode {
+  background-color: #121212;
+  color: #ffffff;
+}
+
+/* ✅ โครงสร้างหลัก */
+.app-container {
+  max-width: 900px;
+  margin: auto;
+  padding: 20px;
+}
+
+/* ✅ Header */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+/* ✅ ปุ่มโหมด */
+.toggle-btn {
+  background: #444;
+  color: white;
+  padding: 8px 15px;
+  border: none;
+  border-radius: 5px;
+  transition: 0.3s;
+}
+.toggle-btn:hover {
+  background: #f8d210;
+  color: #000;
+}
+
+/* ✅ ส่วนกรอง */
+.filter-container {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.input-field,
+.dropdown {
+  flex: 1;
+  padding: 8px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+}
+.add-btn {
+  background: #0d6efd;
+  color: white;
+  padding: 8px 15px;
+  border: none;
+  border-radius: 5px;
+  transition: 0.3s;
+}
+.add-btn:hover {
+  background: #0056b3;
+}
+
+/* ✅ รายการผู้ใช้ (Card View) */
+.user-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+.user-card {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 15px;
+  border-radius: 10px;
+  flex: 1 1 300px;
+  transition: 0.3s;
+}
+.user-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0px 0px 15px rgba(255, 255, 255, 0.2);
+}
+.user-info h3 {
+  margin: 0;
+}
+.interests {
+  font-style: italic;
+  color: #f8d210;
+}
+.desc {
+  font-size: 14px;
+  opacity: 0.8;
+}
+
+/* ✅ ปุ่มแก้ไข & ลบ */
+.actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+}
+.edit-btn {
+  background: #ffc107;
+  color: #000;
+  padding: 5px 10px;
+  border-radius: 5px;
+  transition: 0.3s;
+}
+.edit-btn:hover {
+  background: #ffca2c;
+}
+.delete-btn {
+  background: #dc3545;
+  color: #fff;
+  padding: 5px 10px;
+  border-radius: 5px;
+  transition: 0.3s;
+}
+.delete-btn:hover {
+  background: #ff4d4d;
+}
+</style>
+
+import axios from "axios";
+<template>
+  <div class="container mt-5">
+    <h2 class="fw-bold">รายชื่อทั้งหมด</h2>
+
+    <!-- ✅ ช่องค้นหา -->
+    <div class="d-flex justify-content-between my-3">
+      <input v-model="searchQuery" type="text" class="form-control w-25" placeholder="ค้นหา...">
+      <button class="btn btn-primary" @click="showAddUserModal = true">
+        ➕ เพิ่มผู้ใช้
+      </button>
+    </div>
+
+    <!-- ✅ ตารางแสดงข้อมูล -->
+    <div class="table-responsive">
+      <table class="table table-bordered text-center">
+        <thead class="table-light">
+          <tr>
+            <th>ชื่อ</th>
+            <th>นามสกุล</th>
+            <th>อายุ</th>
+            <th>เพศ</th>
+            <th>ความสนใจ</th>
+            <th>รายละเอียด</th>
+            <th>จัดการ</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(user, index) in filteredUsers" :key="user.id">
+            <td>{{ user.firstname }}</td>
+            <td>{{ user.lastname }}</td>
+            <td>{{ user.age }}</td>
+            <td>{{ user.gender }}</td>
+            <td>{{ user.interests }}</td>
+            <td>{{ user.description }}</td>
+            <td>
+              <button class="btn btn-warning btn-sm me-2" @click="editUser(user)">แก้ไข</button>
+              <button class="btn btn-danger btn-sm" @click="deleteUser(user.id)">ลบ</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ✅ โมดัลเพิ่ม/แก้ไขข้อมูล -->
+    <div v-if="showAddUserModal" class="modal d-block" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">{{ editingUser ? "แก้ไขข้อมูล" : "เพิ่มผู้ใช้" }}</h5>
+            <button type="button" class="btn-close" @click="closeModal"></button>
+          </div>
+          <div class="modal-body">
+            <input v-model="newUser.firstname" type="text" class="form-control mb-2" placeholder="ชื่อ">
+            <input v-model="newUser.lastname" type="text" class="form-control mb-2" placeholder="นามสกุล">
+            <input v-model="newUser.age" type="number" class="form-control mb-2" placeholder="อายุ">
+            <select v-model="newUser.gender" class="form-control mb-2">
+              <option value="ชาย">ชาย</option>
+              <option value="หญิง">หญิง</option>
+              <option value="อื่น ๆ">อื่น ๆ</option>
+            </select>
+            <input v-model="newUser.interests" type="text" class="form-control mb-2" placeholder="ความสนใจ">
+            <textarea v-model="newUser.description" class="form-control mb-2" placeholder="รายละเอียด"></textarea>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" @click="closeModal">ยกเลิก</button>
+            <button class="btn btn-success" @click="editingUser ? updateUser() : addUser()">
+              {{ editingUser ? "อัปเดต" : "เพิ่ม" }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+import axios from "axios";
+
+export default {
+  data() {
+    return {
+      users: [],
+      searchQuery: "",
+      showAddUserModal: false,
+      editingUser: null,
+      newUser: { firstname: "", lastname: "", age: "", gender: "หญิง", interests: "", description: "" },
+    };
+  },
+  computed: {
+    filteredUsers() {
+      return this.users.filter(user => 
+        user.firstname.includes(this.searchQuery) || 
+        user.lastname.includes(this.searchQuery) ||
+        user.age.toString().includes(this.searchQuery) ||
+        user.gender.includes(this.searchQuery)
+      );
+    }
+  },
+  mounted() {
+    this.fetchUsers();
+  },
+  methods: {
+    async fetchUsers() {
+      try {
+        const response = await axios.get("http://localhost:8000/users");
+        this.users = response.data;
+      } catch (error) {
+        console.error("Error fetching users:", error);
+      }
+    },
+    async addUser() {
+      if (!this.newUser.firstname || !this.newUser.lastname || !this.newUser.age) {
+        alert("กรุณากรอกข้อมูลให้ครบ");
+        return;
+      }
+      try {
+        await axios.post("http://localhost:8000/users", this.newUser);
+        this.fetchUsers();
+        this.closeModal();
+      } catch (error) {
+        console.error("Error adding user:", error);
+      }
+    },
+    async deleteUser(id) {
+      if (confirm("คุณต้องการลบผู้ใช้นี้หรือไม่?")) {
+        try {
+          await axios.delete(`http://localhost:8000/users/${id}`);
+          this.fetchUsers();
+        } catch (error) {
+          console.error("Error deleting user:", error);
+        }
+      }
+    },
+    editUser(user) {
+      this.newUser = { ...user };
+      this.editingUser = user.id;
+      this.showAddUserModal = true;
+    },
+    async updateUser() {
+      try {
+        await axios.put(`http://localhost:8000/users/${this.editingUser}`, this.newUser);
+        this.fetchUsers();
+        this.closeModal();
+      } catch (error) {
+        console.error("Error updating user:", error);
+      }
+    },
+    closeModal() {
+      this.showAddUserModal = false;
+      this.newUser = { firstname: "", lastname: "", age: "", gender: "หญิง", interests: "", description: "" };
+      this.editingUser = null;
+    }
+  }
+};
+</script>
+
+<style>
+.modal {
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal-dialog {
+  max-width: 500px;
+}
+</style>
+
+
+
+
+
+
+
+
+<template>
+  <div class="container mt-5">
+    <h2 class="fw-bold">รายชื่อทั้งหมด</h2>
+
+    <!-- ✅ ส่วนของตัวกรองและเรียงลำดับ -->
+    <div class="d-flex justify-content-between my-3">
+      <input v-model="searchQuery" type="text" class="form-control w-25" placeholder="🔍 ค้นหา...">
+      
+      <!-- ✅ กรองตามเพศ -->
+      <select v-model="selectedGender" class="form-control w-25">
+        <option value="">-- กรองเพศ --</option>
+        <option value="ชาย">ชาย</option>
+        <option value="หญิง">หญิง</option>
+        <option value="อื่น ๆ">อื่น ๆ</option>
+      </select>
+
+      <!-- ✅ เรียงลำดับ -->
+      <select v-model="sortKey" class="form-control w-25">
+        <option value="">-- เรียงลำดับ --</option>
+        <option value="firstname">ชื่อ (A-Z)</option>
+        <option value="lastname">นามสกุล (A-Z)</option>
+        <option value="age">อายุ (น้อย → มาก)</option>
+      </select>
+      
+      <button class="btn btn-primary" @click="openAddUserModal">
+        ➕ เพิ่มผู้ใช้
+      </button>
+    </div>
+
+    <!-- ✅ ตารางแสดงข้อมูล -->
+    <div class="table-responsive">
+      <table class="table table-bordered text-center">
+        <thead class="table-light">
+          <tr>
+            <th>ชื่อ</th>
+            <th>นามสกุล</th>
+            <th>อายุ</th>
+            <th>เพศ</th>
+            <th>ความสนใจ</th>
+            <th>รายละเอียด</th>
+            <th>จัดการ</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(user, index) in sortedAndFilteredUsers" :key="user.id">
+            <td>{{ user.firstname }}</td>
+            <td>{{ user.lastname }}</td>
+            <td>{{ user.age }}</td>
+            <td>{{ user.gender }}</td>
+            <td>{{ user.interests }}</td>
+            <td>{{ user.description }}</td>
+            <td>
+              <button class="btn btn-warning btn-sm me-2" @click="editUser(user)">แก้ไข</button>
+              <button class="btn btn-danger btn-sm" @click="deleteUser(user.id)">ลบ</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ✅ โมดัลเพิ่ม/แก้ไขข้อมูล -->
+    <div v-if="showAddUserModal" class="modal d-block" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">{{ editingUser ? "แก้ไขข้อมูล" : "เพิ่มผู้ใช้" }}</h5>
+            <button type="button" class="btn-close" @click="closeModal"></button>
+          </div>
+          <div class="modal-body">
+            <input v-model="newUser.firstname" type="text" class="form-control mb-2" placeholder="ชื่อ">
+            <input v-model="newUser.lastname" type="text" class="form-control mb-2" placeholder="นามสกุล">
+            <input v-model="newUser.age" type="number" class="form-control mb-2" placeholder="อายุ">
+            <select v-model="newUser.gender" class="form-control mb-2">
+              <option value="ชาย">ชาย</option>
+              <option value="หญิง">หญิง</option>
+              <option value="อื่น ๆ">อื่น ๆ</option>
+            </select>
+            <input v-model="newUser.interests" type="text" class="form-control mb-2" placeholder="ความสนใจ">
+            <textarea v-model="newUser.description" class="form-control mb-2" placeholder="รายละเอียด"></textarea>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" @click="closeModal">ยกเลิก</button>
+            <button class="btn btn-success" @click="editingUser ? updateUser() : addUser()">
+              {{ editingUser ? "อัปเดต" : "เพิ่ม" }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+import axios from "axios";
+
+export default {
+  data() {
+    return {
+      users: [],
+      searchQuery: "",
+      selectedGender: "",
+      sortKey: "",
+      sortDirection: "asc",
+      showAddUserModal: false,
+      editingUser: null,
+      newUser: { firstname: "", lastname: "", age: "", gender: "หญิง", interests: "", description: "" },
+    };
+  },
+  computed: {
+    sortedAndFilteredUsers() {
+      let filtered = this.users;
+
+      // ✅ กรองตามเพศ
+      if (this.selectedGender) {
+        filtered = filtered.filter(user => user.gender === this.selectedGender);
+      }
+
+      // ✅ ค้นหาจากชื่อ / นามสกุล / อายุ
+      if (this.searchQuery) {
+        filtered = filtered.filter(user =>
+          user.firstname.includes(this.searchQuery) ||
+          user.lastname.includes(this.searchQuery) ||
+          user.age.toString().includes(this.searchQuery)
+        );
+      }
+
+      // ✅ เรียงลำดับ
+      if (this.sortKey) {
+        filtered = [...filtered].sort((a, b) => {
+          let result = 0;
+          if (a[this.sortKey] < b[this.sortKey]) result = -1;
+          if (a[this.sortKey] > b[this.sortKey]) result = 1;
+          return this.sortDirection === "asc" ? result : -result;
+        });
+      }
+
+      return filtered;
+    }
+  },
+  mounted() {
+    this.fetchUsers();
+  },
+  methods: {
+    async fetchUsers() {
+      try {
+        const response = await axios.get("http://localhost:8000/users");
+        this.users = response.data;
+      } catch (error) {
+        console.error("Error fetching users:", error);
+      }
+    },
+    openAddUserModal() {
+      this.newUser = { firstname: "", lastname: "", age: "", gender: "หญิง", interests: "", description: "" };
+      this.editingUser = null;
+      this.showAddUserModal = true;
+    },
+    async addUser() {
+      try {
+        await axios.post("http://localhost:8000/users", this.newUser);
+        this.fetchUsers();
+        this.closeModal();
+      } catch (error) {
+        console.error("Error adding user:", error);
+      }
+    },
+    async deleteUser(id) {
+      if (confirm("คุณต้องการลบผู้ใช้นี้หรือไม่?")) {
+        try {
+          await axios.delete(`http://localhost:8000/users/${id}`);
+          this.fetchUsers();
+        } catch (error) {
+          console.error("Error deleting user:", error);
+        }
+      }
+    },
+    editUser(user) {
+      this.newUser = { ...user };
+      this.editingUser = user.id;
+      this.showAddUserModal = true;
+    },
+    async updateUser() {
+      try {
+        await axios.put(`http://localhost:8000/users/${this.editingUser}`, this.newUser);
+        this.fetchUsers();
+        this.closeModal();
+      } catch (error) {
+        console.error("Error updating user:", error);
+      }
+    },
+    closeModal() {
+      this.showAddUserModal = false;
+      this.newUser = { firstname: "", lastname: "", age: "", gender: "หญิง", interests: "", description: "" };
+      this.editingUser = null;
+    }
+  }
+};
+</script>

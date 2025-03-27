@@ -1,33 +1,24 @@
 <template>
   <div class="container mt-5">
-    <h2 class="fw-bold">รายชื่อทั้งหมด</h2>
+    <h2 class="fw-bold mb-4 animate__animated animate__fadeInUp">รายชื่อทั้งหมด</h2>
 
-    <!-- ✅ ส่วนของตัวกรองและเรียงลำดับ -->
     <div class="d-flex justify-content-between my-3">
-      <input v-model="searchQuery" type="text" class="form-control w-25" placeholder="🔍 ค้นหา...">
-      
-      <!-- ✅ กรองตามเพศ -->
-      <select v-model="selectedGender" class="form-control w-25">
+      <input v-model="searchQuery" type="text" class="form-control w-25" placeholder="🔍 ค้นหา..." data-aos="fade-right" />
+      <select v-model="selectedGender" class="form-control w-25" data-aos="fade-left">
         <option value="">-- กรองเพศ --</option>
         <option value="ชาย">ชาย</option>
         <option value="หญิง">หญิง</option>
         <option value="อื่น ๆ">อื่น ๆ</option>
       </select>
-
-      <!-- ✅ เรียงลำดับ -->
-      <select v-model="sortKey" class="form-control w-25">
+      <select v-model="sortKey" class="form-control w-25" data-aos="fade-right">
         <option value="">-- เรียงลำดับ --</option>
         <option value="firstname">ชื่อ (A-Z)</option>
         <option value="lastname">นามสกุล (A-Z)</option>
         <option value="age">อายุ (น้อย → มาก)</option>
       </select>
-      
-      <button class="btn btn-primary" @click="openAddUserModal">
-        ➕ เพิ่มผู้ใช้
-      </button>
+      <button class="btn btn-primary" @click="openAddUserModal" data-aos="fade-up">➕ เพิ่มผู้ใช้</button>
     </div>
 
-    <!-- ✅ ตารางแสดงข้อมูล -->
     <div class="table-responsive">
       <table class="table table-bordered text-center">
         <thead class="table-light">
@@ -42,7 +33,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(user, index) in sortedAndFilteredUsers" :key="user.id">
+          <tr v-for="(user, index) in sortedAndFilteredUsers" :key="user.id" class="user-item animate__animated animate__fadeInUp">
             <td>{{ user.firstname }}</td>
             <td>{{ user.lastname }}</td>
             <td>{{ user.age }}</td>
@@ -58,7 +49,7 @@
       </table>
     </div>
 
-    <!-- ✅ โมดัลเพิ่ม/แก้ไขข้อมูล -->
+    <!-- โมดัลสำหรับเพิ่มหรือแก้ไขข้อมูลผู้ใช้ -->
     <div v-if="showAddUserModal" class="modal d-block" tabindex="-1">
       <div class="modal-dialog">
         <div class="modal-content">
@@ -91,7 +82,10 @@
 </template>
 
 <script>
+// นำเข้า axios สำหรับทำการเชื่อมต่อกับ API
 import axios from "axios";
+// นำเข้า SweetAlert2
+import Swal from 'sweetalert2';
 
 export default {
   data() {
@@ -109,13 +103,9 @@ export default {
   computed: {
     sortedAndFilteredUsers() {
       let filtered = this.users;
-
-      // ✅ กรองตามเพศ
       if (this.selectedGender) {
         filtered = filtered.filter(user => user.gender === this.selectedGender);
       }
-
-      // ✅ ค้นหาจากชื่อ / นามสกุล / อายุ
       if (this.searchQuery) {
         filtered = filtered.filter(user =>
           user.firstname.includes(this.searchQuery) ||
@@ -123,8 +113,6 @@ export default {
           user.age.toString().includes(this.searchQuery)
         );
       }
-
-      // ✅ เรียงลำดับ
       if (this.sortKey) {
         filtered = [...filtered].sort((a, b) => {
           let result = 0;
@@ -133,7 +121,6 @@ export default {
           return this.sortDirection === "asc" ? result : -result;
         });
       }
-
       return filtered;
     }
   },
@@ -164,12 +151,33 @@ export default {
       }
     },
     async deleteUser(id) {
-      if (confirm("คุณต้องการลบผู้ใช้นี้หรือไม่?")) {
+      const result = await Swal.fire({
+        title: 'คุณต้องการลบผู้ใช้นี้หรือไม่?',
+        text: 'ข้อมูลนี้จะไม่สามารถกู้คืนได้',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#FF9F00',  // สีปุ่มยืนยัน
+        cancelButtonColor: '#d33',      // สีปุ่มยกเลิก
+        confirmButtonText: 'ลบ',
+        cancelButtonText: 'ยกเลิก'
+      });
+
+      if (result.isConfirmed) {
         try {
           await axios.delete(`http://localhost:8000/users/${id}`);
-          this.fetchUsers();
+          this.fetchUsers(); // ดึงข้อมูลใหม่หลังจากลบ
+          Swal.fire(
+            'ลบสำเร็จ!',
+            'ผู้ใช้ได้รับการลบออกแล้ว.',
+            'success'
+          );
         } catch (error) {
           console.error("Error deleting user:", error);
+          Swal.fire(
+            'เกิดข้อผิดพลาด!',
+            'ไม่สามารถลบผู้ใช้งานได้.',
+            'error'
+          );
         }
       }
     },
@@ -195,3 +203,22 @@ export default {
   }
 };
 </script>
+
+<style scoped>
+.user-item {
+  opacity: 0;
+  transform: translateY(50px);
+  animation: fadeIn 1s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+</style>
